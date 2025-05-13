@@ -27,7 +27,13 @@ def get_valid_token():
         if response.status_code == 200:
             return token
 
-    return None 
+    return None
+
+def contains_chinese(text):
+    for ch in text:
+        if '\u4e00' <= ch <= '\u9fff':
+            return "True"
+    return "False"
         
 def detect_text(image_url, API_KEY):
     print('Processing:', image_url)
@@ -79,6 +85,7 @@ def main_flow(file_name, from_index: int = None):
         if not os.path.exists(output_file):
             df_filtered["status"] = ""
             df_filtered["text"] = ""
+            df_filtered["is_chinese"] = "False"
             df_filtered.head(0).to_csv(output_file, index=False,  sep='|', quoting=csv.QUOTE_ALL, escapechar='\\')
 
         for i, row in df_filtered.iterrows():
@@ -86,13 +93,17 @@ def main_flow(file_name, from_index: int = None):
             try:
                 if img.find('https://') != -1:
                     status, text = detect_text(img, API_KEY)
+                    is_chinese = contains_chinese(text)
                 else:
                     status, text = "", ""
+                    is_chinese = "False"
             except:
                 status, text = "", ""
+                is_chinese = "False"
 
             df_filtered.at[i, "status"] = status
             df_filtered.at[i, "text"] = text
+            df_filtered.at[i, "is_chinese"] = is_chinese
             df_filtered.loc[[i]].reset_index(drop=True).to_csv(output_file, mode='a', header=False, index=False, sep='|', quoting=csv.QUOTE_ALL, escapechar='\\')
             time.sleep(0.5)
     else:
@@ -101,11 +112,12 @@ def main_flow(file_name, from_index: int = None):
 # # First time create index
 # create_index_csv(file_name='Image')
 
+main_flow(file_name= 'Image')
+
+
 # Input file name or Index from for next time (Default auto run with max index in Output files)
 # Schema file must same as Image.csv
 # If want re-run ALL -> delete file output
-main_flow(file_name= 'Image')
-
 # Note: 
 # Status=200 it's OK, status=invalid -> url image invalid, other: limit of api or authen error
 # With Status=200 text = "" is no text in image, text != "" -> Text in Image. You can filter with condition
